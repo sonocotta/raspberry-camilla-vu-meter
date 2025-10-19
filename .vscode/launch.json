@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: main.py with ledbar (not real one)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--interval-ms", "200",
+                "--ledbar", "--led-pin", "12", "--led-count", "16", "--led-end-colors", "--led-console-debug"
+            ]
+        },
+        {
+            "name": "Python Debugger: main.py with console",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--interval-ms", "200",
+                "--console", "--console-bar-length", "60",
+            ]
+        },
+    ]
+}
