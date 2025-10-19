@@ -40,15 +40,25 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
   ```bash
   .venv/bin/python main.py --console --console-bar-length 40 --interval-ms 100
   ```
+
+  <img width="944" height="83" alt="image" src="https://github.com/user-attachments/assets/5c429980-0420-4b79-b318-d66b9d8efb40" />
+
 - LED bar (hardware) on GPIO 18 with 40 LEDs:
   ```bash
   sudo .venv/bin/python main.py --ledbar --led-pin 18 --led-count 40 --interval-ms 100
   ```
   Note: `sudo` / root may be required for hardware access depending on your setup.
+
+   <img width="864" height="658" alt="image" src="https://github.com/user-attachments/assets/3bb7696b-07f4-4b08-952c-2eeb38915ee8" />
+
+
 - LED bar using console debug PixelStrip (no hardware required):
   ```bash
   .venv/bin/python main.py --ledbar --led-count 16 --led-console-debug --interval-ms 100
   ```
+
+   <img width="1015" height="87" alt="image" src="https://github.com/user-attachments/assets/2f9cfb55-02cf-4d3f-bff7-5b480d23abb8" />
+  
 - Combine displays (console + LEDs):
   ```bash
   .venv/bin/python main.py --console --ledbar --led-count 8
