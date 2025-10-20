@@ -60,9 +60,20 @@ async def main(args):
     if args.oled:
         try:
             from display.oled_display import OledDisplay
-            displays.append(OledDisplay())
-        except ImportError:
-            print("luma.oled not available, skipping OLED display.")
+            displays.append(OledDisplay(
+                spi_port0=args.oled_spi_port0,
+                spi_device0=args.oled_spi_device0,
+                gpio_dc0=args.oled_dc0,
+                spi_port1=args.oled_spi_port1,
+                spi_device1=args.oled_spi_device1,
+                gpio_dc1=args.oled_dc1,
+                gpio_rst=args.oled_rst,
+                needle_length=args.oled_needle_length,
+                min_db=args.oled_min_db,
+                max_db=args.oled_max_db
+            ))
+        except Exception as e:
+            print(f"OLED display not available or failed to initialize: {e}")
 
     # Dummy display
     if args.dummy:
@@ -104,6 +115,26 @@ if __name__ == "__main__":
 
     parser.add_argument("--oled", action="store_true",
                         help="Enable OLED display")
+    parser.add_argument("--oled-spi-port0", type=int, default=0,
+                        help="SPI port for device0 (default: 0)")
+    parser.add_argument("--oled-spi-device0", type=int, default=0,
+                        help="SPI device number for device0 (default: 0)")
+    parser.add_argument("--oled-dc0", type=int, default=25,
+                        help="DC GPIO for device0 (default: 25)")
+    parser.add_argument("--oled-spi-port1", type=int, default=0,
+                        help="SPI port for device1 (default: 0)")
+    parser.add_argument("--oled-spi-device1", type=int, default=1,
+                        help="SPI device number for device1 (default: 1)")
+    parser.add_argument("--oled-dc1", type=int, default=24,
+                        help="DC GPIO for device1 (default: 24)")
+    parser.add_argument("--oled-rst", type=int, default=16,
+                        help="Shared RST GPIO for both OLEDs (passed for first device only; default: 16)")
+    parser.add_argument("--oled-needle-length", type=int, default=80,
+                        help="Needle length in pixels for OLED meter (default: 80)")
+    parser.add_argument("--oled-min-db", type=float, default=-96.0,
+                        help="Minimum dB mapped to left end of OLED bar (default: -96.0)")
+    parser.add_argument("--oled-max-db", type=float, default=12.0,
+                        help="Maximum dB mapped to right end of OLED bar (default: 12.0)")
 
     parser.add_argument("--console", action="store_true",
                         help="Enable console pseudo-graphical display")
