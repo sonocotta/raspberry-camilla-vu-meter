@@ -80,6 +80,14 @@ This project supports driving two separate SH1106 SPI OLED devices (one device p
 
   <img width="944" height="83" alt="image" src="https://github.com/user-attachments/assets/5c429980-0420-4b79-b318-d66b9d8efb40" />
 
+- OLED Hat (over SPI):
+  ```bash
+  sudo .venv/bin/python main.py --oled --interval-ms 100
+  ```
+
+  <img width="568" height="338" alt="image" src="https://github.com/user-attachments/assets/8c4b0a3d-6599-4f56-96a8-1d1e43914d36" />
+
+
 - LED bar (hardware) on GPIO 18 with 40 LEDs:
   ```bash
   sudo .venv/bin/python main.py --ledbar --led-pin 18 --led-count 40 --interval-ms 100
