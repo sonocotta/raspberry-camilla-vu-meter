@@ -1,3 +1,14 @@
-rpi_ws281x
+# camill dependencies
 websocket-client
 git+https://github.com/HEnquist/pycamilladsp.git
+
+# led bars dependencies
+rpi_ws281x
+
+# display dependencies
+spidev
+RPi.GPIO
+
+# oled display dependencies
+luma.oled
+Pillow

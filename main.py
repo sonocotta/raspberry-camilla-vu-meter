@@ -56,6 +56,14 @@ async def main(args):
                                          min_db=args.led_min_db,
                                          max_db=args.led_max_db))
 
+    # OLED display
+    if args.oled:
+        try:
+            from display.oled_display import OledDisplay
+            displays.append(OledDisplay())
+        except ImportError:
+            print("luma.oled not available, skipping OLED display.")
+
     # Dummy display
     if args.dummy:
         displays.append(DummyDisplay())
@@ -93,6 +101,9 @@ if __name__ == "__main__":
                         help="Minimum dB for LED bar display (default: -102.0)")
     parser.add_argument("--led-max-db", type=float, default=6.0,
                         help="Maximum dB for LED bar display (default: 6.0)")
+
+    parser.add_argument("--oled", action="store_true",
+                        help="Enable OLED display")
 
     parser.add_argument("--console", action="store_true",
                         help="Enable console pseudo-graphical display")
