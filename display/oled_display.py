@@ -43,6 +43,7 @@ class OledDisplay:
         max_db: float = 12.0,
         needle_length: int = 80,
         angle_span_deg: float = 120.0,
+        mono: bool = False,
     ):
         self.device0 = device0
         self.device1 = device1
@@ -60,6 +61,8 @@ class OledDisplay:
         self.needle_length = max(1, int(needle_length))
         # angle span centered at 0 (so angles go from -angle_span/2 .. +angle_span/2)
         self.angle_span_deg = float(angle_span_deg)
+        # mono mode: single-OLED showing combined LR values (label "LR")
+        self.mono = bool(mono)
 
         # attempt to create devices via luma if not provided
         try:
@@ -67,7 +70,8 @@ class OledDisplay:
                 # pass gpio_RST only for the first device (shared reset)
                 serial0 = luma_spi(device=spi_device0, port=spi_port0, gpio_DC=gpio_dc0, gpio_RST=gpio_rst)
                 self.device0 = sh1106(serial0, rotate=rotate, width=width, height=height)
-            if self.device1 is None:
+            # create second device only when not in mono mode and not provided by caller
+            if not self.mono and self.device1 is None:
                 # do not pass gpio_RST for the second device (shared line)
                 serial1 = luma_spi(device=spi_device1, port=spi_port1, gpio_DC=gpio_dc1)
                 self.device1 = sh1106(serial1, rotate=rotate, width=width, height=height)
@@ -283,6 +287,9 @@ class OledDisplay:
         """
         Draw channel 0 -> device1 labeled 'L' and channel 1 -> device0 labeled 'R'
         (channels swapped compared to earlier behaviour).
+
+        In mono mode (self.mono == True) draws single display on device0 with label "LR"
+        and uses average of both channels for rms and peak.
         """
         data = self._prepare_levels(levels)
         if not data:
@@ -298,8 +305,14 @@ class OledDisplay:
             peak.append(self._min_db)
 
         try:
-            # swapped: channel 0 -> device1 labeled "L"; channel 1 -> device0 labeled "R"
-            self._draw_on_device(self.device1, "L", float(rms[0]), float(peak[0]))
-            self._draw_on_device(self.device0, "R", float(rms[1]), float(peak[1]))
+            if self.mono:
+                # average both channels and draw on single device (device0) labeled "LR"
+                avg_rms = (float(rms[0]) + float(rms[1])) / 2.0
+                avg_peak = (float(peak[0]) + float(peak[1])) / 2.0
+                self._draw_on_device(self.device0, "LR", avg_rms, avg_peak)
+            else:
+                # swapped: channel 0 -> device1 labeled "L"; channel 1 -> device0 labeled "R"
+                self._draw_on_device(self.device1, "L", float(rms[0]), float(peak[0]))
+                self._draw_on_device(self.device0, "R", float(rms[1]), float(peak[1]))
         except Exception:
             traceback.print_exc()

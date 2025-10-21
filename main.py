@@ -70,7 +70,8 @@ async def main(args):
                 gpio_rst=args.oled_rst,
                 needle_length=args.oled_needle_length,
                 min_db=args.oled_min_db,
-                max_db=args.oled_max_db
+                max_db=args.oled_max_db,
+                mono=args.oled_mono,
             ))
         except Exception as e:
             print(f"OLED display not available or failed to initialize: {e}")
@@ -114,7 +115,9 @@ if __name__ == "__main__":
                         help="Maximum dB for LED bar display (default: 6.0)")
 
     parser.add_argument("--oled", action="store_true",
-                        help="Enable OLED display")
+                        help="Enable OLED display") 
+    parser.add_argument("--oled-mono", action="store_true",
+                        help="Enable mono OLED mode (single display labeled 'LR' using averaged L/R values)")
     parser.add_argument("--oled-spi-port0", type=int, default=0,
                         help="SPI port for device0 (default: 0)")
     parser.add_argument("--oled-spi-device0", type=int, default=0,

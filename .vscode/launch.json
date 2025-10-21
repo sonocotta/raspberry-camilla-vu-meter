@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: main.py with OLEDs",
+            "name": "Python Debugger: main.py with two OLEDs",
             "type": "debugpy",
             "request": "launch",
             "program": "main.py",
@@ -11,6 +11,18 @@
                 "--interval-ms", "100",
                 "--console", "--console-bar-length", "60",
                 "--oled"
+            ]
+        },
+        {
+            "name": "Python Debugger: main.py with single OLED",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--interval-ms", "100",
+                "--console", "--console-bar-length", "60",
+                "--oled", "--oled-mono"
             ]
         },
         {
