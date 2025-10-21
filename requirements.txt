@@ -12,3 +12,8 @@ RPi.GPIO
 # oled display dependencies
 luma.oled
 Pillow
+
+#tft display dependencies
+st7735
+gpiod
+gpiodevice
