@@ -7,6 +7,19 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
 - an OLED pair (SH1106) driven via SPI (one display per channel)
 - or a dummy no-op display.
 
+- [Camilla DSP VU Meter](#camilla-dsp-vu-meter)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Quick install (recommended inside project directory)](#quick-install-recommended-inside-project-directory)
+  - [OLED (SH1106) display details](#oled-sh1106-display-details)
+    - [OLED mono mode (single OLED)](#oled-mono-mode-single-oled)
+  - [Running](#running)
+    - [Available CLI options (examples; actual parser in `main.py`):](#available-cli-options-examples-actual-parser-in-mainpy)
+    - [Example systemd service](#example-systemd-service)
+  - [Notes \& troubleshooting](#notes--troubleshooting)
+  - [Project layout (key files)](#project-layout-key-files)
+  - [License](#license)
+
 ## Features
 
 - Multiple displays can be active simultaneously (console + LED strip + OLED).
@@ -70,6 +83,21 @@ This project supports driving two separate SH1106 SPI OLED devices (one device p
     - angle_span_deg (deg)
     - spi ports/devices and gpio DC/RST pins (gpio_rst is a single shared RST)
   - The display requires `luma.oled` and `Pillow` installed; the code will raise an error if luma is missing.
+
+### OLED mono mode (single OLED)
+
+A mono mode is available when you want a single OLED to show the overall (mono) level instead of two separate devices.
+
+- Behavior:
+  - Single OLED is used and labelled "LR".
+  - RMS and peak are computed as the average of left and right channels (simple arithmetic mean).
+  - The needle shows the averaged RMS value; the bottom bar fill represents the averaged peak (filled from min_db to the averaged peak).
+  - Only the first SPI device parameters are required (spi-port0/device0/dc0 and the shared --oled-rst). The second device parameters are ignored in mono mode.
+  - The same min_db/max_db/needle_length/angle_span configuration apply.
+- CLI:
+  - Enable with `--oled --oled-mono`
+  - Use the same OLED-related flags as the pair mode; only the device0 values are used for the single display:
+`--oled-spi-port0, --oled-spi-device0, --oled-dc0, --oled-rst, --oled-needle-length, --oled-min-db, --oled-max-db`
 
 ## Running
 
