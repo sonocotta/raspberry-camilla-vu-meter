@@ -1,0 +1,3 @@
+[submodule "display/peppy"]
+	path = display/peppy
+	url = https://github.com/project-owner/PeppyMeter

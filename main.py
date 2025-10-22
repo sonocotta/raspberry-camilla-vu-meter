@@ -113,7 +113,6 @@ async def main(args):
                 spi_speed_hz=args.tft_spi_speed_hz,
                 offset_left=args.tft_offset_left,
                 offset_top=args.tft_offset_top,
-                mono=args.tft_mono,
             ))
         except Exception as e:
             print(f"TFT display not available or failed to initialize: {e}")
@@ -183,8 +182,6 @@ if __name__ == "__main__":
 
     parser.add_argument("--tft", action="store_true",
                         help="Enable TFT displays (ST7735)")
-    parser.add_argument("--tft-mono", action="store_true",
-                        help="Enable mono TFT mode (single display labeled 'LR' using averaged L/R values)")
     parser.add_argument("--tft-spi-port0", type=int, default=0,
                         help="SPI port for TFT device0 (default: 0)")
     parser.add_argument("--tft-cs0", type=int, default=0,
