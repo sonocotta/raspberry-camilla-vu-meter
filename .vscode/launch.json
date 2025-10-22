@@ -14,6 +14,18 @@
             ]
         },
         {
+            "name": "Python Debugger: main.py with single TFT",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--interval-ms", "100",
+                "--console", "--console-bar-length", "60",
+                "--tft", "--tft-mono"
+            ]
+        },
+        {
             "name": "Python Debugger: main.py with two OLEDs",
             "type": "debugpy",
             "request": "launch",

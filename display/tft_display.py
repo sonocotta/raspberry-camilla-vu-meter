@@ -50,6 +50,7 @@ class TFTDisplay:
         device0: Optional[object] = None,
         device1: Optional[object] = None,
         mono: bool = False,
+        renderer_class: Optional[object] = None,
     ):
         self.width = int(width)
         self.height = int(height)
@@ -57,6 +58,7 @@ class TFTDisplay:
 
         self.device0 = device0
         self.device1 = device1
+        self._renderer = None
 
         self._font = None
         # try load small default font
@@ -112,6 +114,17 @@ class TFTDisplay:
             self.device0 = None
             self.device1 = None
 
+        # instantiate renderer - lazy import to avoid hard dependency
+        try:
+            if renderer_class is None:
+                # default to internal dummy renderer if available
+                from .tft_dummy_renderer import TftDummyRenderer as _DefaultRenderer  # type: ignore
+                renderer_class = _DefaultRenderer
+            # renderer gets devices and layout parameters
+            self._renderer = renderer_class(self.device0, self.device1, width=self.width, height=self.height, mono=self.mono)
+        except Exception:
+            self._renderer = None
+
     def _prepare_levels(self, levels) -> Optional[Dict[str, List[float]]]:
         if not levels:
             return None
@@ -148,6 +161,12 @@ class TFTDisplay:
             self.clear()
         except Exception:
             pass
+        # let renderer do any cleanup it needs
+        try:
+            if self._renderer is not None and hasattr(self._renderer, "close"):
+                self._renderer.close()
+        except Exception:
+            pass
         for dev in (self.device0, self.device1):
             if dev is None:
                 continue
@@ -156,53 +175,6 @@ class TFTDisplay:
                     dev.cleanup()
             except Exception:
                 pass
-
-    def _draw_text_on_image(self, label: str, rms: float, peak: float) -> Optional["Image.Image"]:
-        """Create a PIL image with simple text for the given label/rms/peak."""
-        if Image is None or ImageDraw is None:
-            return None
-        img = Image.new("RGB", (self.width, self.height), "black")
-        draw = ImageDraw.Draw(img)
-        font = self._font
-
-        # basic layout: label big-ish near top, then RMS and PEAK lines
-        try:
-            if font is None:
-                # fallback approximate positions
-                draw.text((10, 10), f"{label}", fill="white")
-                draw.text((10, 40), f"RMS: {rms:.1f} dB", fill="white")
-                draw.text((10, 70), f"PK : {peak:.1f} dB", fill="white")
-            else:
-                # label
-                draw.text((10, 8), f"{label}", fill="white", font=font)
-                # RMS / PEAK
-                draw.text((10, 36), f"RMS: {rms:.1f} dB", fill="white", font=font)
-                draw.text((10, 56), f"PK : {peak:.1f} dB", fill="white", font=font)
-        except Exception:
-            traceback.print_exc()
-        return img
-
-    def _draw_on_device(self, dev, label: str, rms: float, peak: float):
-        """Render text and push to device; if no device, print to console."""
-        img = self._draw_text_on_image(label, rms, peak)
-        if img is None or dev is None:
-            # fallback: console output
-            print(f"{label} RMS:{rms:.1f} dB  PK:{peak:.1f} dB")
-            return
-        try:
-            if hasattr(dev, "display") and callable(getattr(dev, "display")):
-                dev.display(img)
-            elif hasattr(dev, "show") and callable(getattr(dev, "show")):
-                dev.show(img)
-            else:
-                # no known display API -> try attribute that many libs have
-                try:
-                    dev.display(img)
-                except Exception:
-                    print(f"{label} RMS:{rms:.1f} dB  PK:{peak:.1f} dB")
-        except Exception:
-            traceback.print_exc()
-            print(f"{label} RMS:{rms:.1f} dB  PK:{peak:.1f} dB")
 
     def update(self, levels):
         """
@@ -222,14 +194,18 @@ class TFTDisplay:
         while len(peak) < 2:
             peak.append(-120.0)
 
-        try:
-            if self.mono:
-                avg_rms = (float(rms[0]) + float(rms[1])) / 2.0
-                avg_peak = (float(peak[0]) + float(peak[1])) / 2.0
-                self._draw_on_device(self.device0, "LR", avg_rms, avg_peak)
+        if self.mono:
+            avg_rms = (float(rms[0]) + float(rms[1])) / 2.0
+            avg_peak = (float(peak[0]) + float(peak[1])) / 2.0
+            # delegate to renderer when available
+            if self._renderer is not None and hasattr(self._renderer, "draw"):
+                self._renderer.draw(avg_rms, avg_peak, avg_rms, avg_peak)
             else:
-                # channel 0 -> device0 labeled "L", channel 1 -> device1 labeled "R"
-                self._draw_on_device(self.device0, "L", float(rms[0]), float(peak[0]))
-                self._draw_on_device(self.device1, "R", float(rms[1]), float(peak[1]))
-        except Exception:
-            traceback.print_exc()
+                print(f"LR RMS:{avg_rms:.1f} dB  PK:{avg_peak:.1f} dB")
+        else:
+            # channel 0 -> device0 labeled "L", channel 1 -> device1 labeled "R"
+            if self._renderer is not None and hasattr(self._renderer, "draw"):
+                self._renderer.draw(float(rms[0]), float(peak[0]), float(rms[1]), float(peak[1]))
+            else:
+                print(f"L RMS:{float(rms[0]):.1f} dB  PK:{float(peak[0]):.1f} dB")
+                print(f"R RMS:{float(rms[1]):.1f} dB  PK:{float(peak[1]):.1f} dB")
