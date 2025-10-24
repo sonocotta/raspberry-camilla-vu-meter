@@ -176,8 +176,8 @@ if __name__ == "__main__":
                         help="Shared RST GPIO for both OLEDs (passed for first device only; default: 16)")
     parser.add_argument("--oled-needle-length", type=int, default=80,
                         help="Needle length in pixels for OLED meter (default: 80)")
-    parser.add_argument("--oled-min-db", type=float, default=-96.0,
-                        help="Minimum dB mapped to left end of OLED bar (default: -96.0)")
+    parser.add_argument("--oled-min-db", type=float, default=-72.0,
+                        help="Minimum dB mapped to left end of OLED bar (default: -72.0)")
     parser.add_argument("--oled-max-db", type=float, default=12.0,
                         help="Maximum dB mapped to right end of OLED bar (default: 12.0)")
 

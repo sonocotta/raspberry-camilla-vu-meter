@@ -21,7 +21,7 @@ class TftRenderer:
 
     # Color constants (RGB tuples) — adjust here to change theme
     COLOR_BG = (0, 0, 0)              # Background
-    COLOR_SCALE = (255, 255, 255)     # Scale lines and ticks
+    COLOR_SCALE = (64, 64, 64)     # Scale lines and ticks
     COLOR_TEXT = (255, 255, 255)      # Labels/text
     COLOR_NEEDLE = (255, 128, 255)      # Needle (pink/magenta)
     COLOR_LED_GREEN = (0, 255, 0)     # LED bar below -12 dB
@@ -44,7 +44,7 @@ class TftRenderer:
         needle_base_offset: int = 20,
         arrow_offset: int = 8,
         bar_thickness: int = 12,
-        tick_height: int = 8,
+        tick_height: int = 4,
         angle_span_deg: float = 60.0,
     ):
         self.device0 = device0
@@ -151,24 +151,21 @@ class TftRenderer:
         start_deg = 270.0 - half_span
         end_deg = 270.0 + half_span
 
-        # Draw arc boundaries (inner and outer)
-        try:
-            bbox_outer = (cx - r_outer, cy - r_outer, cx + r_outer, cy + r_outer)
-            bbox_inner = (cx - r_inner, cy - r_inner, cx + r_inner, cy + r_inner)
-            draw.arc(bbox_outer, start=start_deg, end=end_deg, fill=self.COLOR_SCALE, width=1)
-            draw.arc(bbox_inner, start=start_deg, end=end_deg, fill=self.COLOR_SCALE, width=1)
-        except Exception:
-            # Fallback: approximate arcs with short chords
-            steps = 64
-            for i in range(steps):
-                a0 = math.radians(-half_span + (i/steps)*self.angle_span_deg)
-                a1 = math.radians(-half_span + ((i+1)/steps)*self.angle_span_deg)
-                x0o = int(cx + r_outer * math.sin(a0)); y0o = int(cy - r_outer * math.cos(a0))
-                x1o = int(cx + r_outer * math.sin(a1)); y1o = int(cy - r_outer * math.cos(a1))
-                x0i = int(cx + r_inner * math.sin(a0)); y0i = int(cy - r_inner * math.cos(a0))
-                x1i = int(cx + r_inner * math.sin(a1)); y1i = int(cy - r_inner * math.cos(a1))
-                draw.line((x0o, y0o, x1o, y1o), fill=self.COLOR_SCALE)
-                draw.line((x0i, y0i, x1i, y1i), fill=self.COLOR_SCALE)
+        # Draw arc boundaries (inner and outer) with color-coded segments
+        steps = 128
+        for i in range(steps):
+            a0 = math.radians(-half_span + (i/steps)*self.angle_span_deg)
+            a1 = math.radians(-half_span + ((i+1)/steps)*self.angle_span_deg)
+            ac = 0.5 * (a0 + a1)
+            seg_color = self._color_for_db(self._angle_to_db(ac))
+            # outer boundary segment
+            x0o = int(cx + r_outer * math.sin(a0)); y0o = int(cy - r_outer * math.cos(a0))
+            x1o = int(cx + r_outer * math.sin(a1)); y1o = int(cy - r_outer * math.cos(a1))
+            draw.line((x0o, y0o, x1o, y1o), fill=seg_color)
+            # inner boundary segment
+            x0i = int(cx + r_inner * math.sin(a0)); y0i = int(cy - r_inner * math.cos(a0))
+            x1i = int(cx + r_inner * math.sin(a1)); y1i = int(cy - r_inner * math.cos(a1))
+            draw.line((x0i, y0i, x1i, y1i), fill=seg_color)
 
         # ticks every 12 dB, including 0
         start_db = int(self._min_db // 12 * 12)
@@ -370,8 +367,8 @@ class TftRenderer:
         # Dial geometry aligned with needle
         cx = self.width // 2
         cy = self.height + int(self.needle_length * 0.2)
-        r_outer = self.needle_length
-        r_inner = max(1, r_outer - self.bar_thickness)
+        r_outer = self.needle_length - 2
+        r_inner = max(1, r_outer - self.bar_thickness + 4)
         half_span = self.angle_span_deg / 2.0
 
         # Angle range
@@ -383,8 +380,8 @@ class TftRenderer:
             return
 
         # Segment sizing: approximate square LEDs along arc
-        led_size = max(2, r_outer - r_inner)  # arc length ~= radial thickness
-        gap = 1  # ~1px gap along arc
+        led_size = max(2, (r_outer - r_inner) // 2)  # arc length ~= radial thickness
+        gap = 2 
         r_mid = (r_inner + r_outer) / 2.0
         dtheta_led = led_size / max(1.0, r_mid)
         dtheta_step = (led_size + gap) / max(1.0, r_mid)

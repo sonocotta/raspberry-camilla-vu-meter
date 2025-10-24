@@ -30,7 +30,7 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
 - Fractional brightness for the last lit LED so level transitions look smooth.
 - Peak marker shown on both console and LED strip (LED peak shown only if above configured min dB).
 - OLED pair shows a large channel indicator and a needle meter plus a horizontal level bar with ticks and peak fill.
-- TFT support: basic text-based RMS/Peak readouts per channel (stub for later richer rendering).
+- TFT support: analog-style meter renderer with a fixed-length needle, radial dB/percentage scale, and a colored peak fill per channel (mono mode supported).
 - Console debug PixelStrip implementation (ConsolePixelStrip) for debugging without hardware.
 
 ## Requirements
@@ -141,8 +141,8 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
   ```
 
 - Implementation notes:
-  - The current implementation initializes two ST7735 devices (one per channel) and renders simple text showing channel label ("L"/"R"), RMS and Peak.
-  - All TFT pin/parameter options are exposed via CLI/constructor (SPI port, CS, DC, RST, backlight, rotation, width, height, spi speed, offsets).
+  - The current implementation initializes two ST7735 devices (one per channel) and uses a renderer class to draw an analog-style meter: a radial scale with dB and percentage ticks, a fixed-length needle pivoting from the bottom region, a colored LED-style arc indicating peak, and a large channel label.
+  - All TFT pin/parameter options are exposed via CLI/constructor (SPI port, CS, DC, RST, backlight, rotation, width, height, SPI speed, offsets). The renderer is internal and selected by default; no CLI flag is needed to choose it.
   - Many ST7735 drivers expose a display(image) or show(image) method; the code attempts both when drawing the PIL image.
   - The TFT driver used by the project expects the `st7735` Python package and `Pillow` installed.
   - Displays are cleared on shutdown to avoid leaving static image.
@@ -202,8 +202,8 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
 - --led-count N            number of LEDs on the strip (default 40)
 - --led-console-debug      use ConsolePixelStrip (console visualization) instead of real PixelStrip
 - --led-end-colors         enable end-colors mode (start green; last LEDs yellow/red)
-- --led-min-db FLOAT       min dB mapped to first LED (default -120)
-- --led-max-db FLOAT       max dB mapped to last LED (default 12)
+- --led-min-db FLOAT       min dB mapped to first LED (default -102)
+- --led-max-db FLOAT       max dB mapped to last LED (default 6)
 - --oled                   enable OLED pair display
 - --oled-mono              enable mono OLED mode (single display labeled 'LR' using averaged L/R values)
 - --oled-spi-port0 N       SPI port for device0 (example)
@@ -214,8 +214,8 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
 - --oled-dc1 N             DC GPIO for device1
 - --oled-rst N             shared RST GPIO (single pin used for the first device)
 - --oled-needle-length N   needle length in pixels
-- --oled-min-db FLOAT      min dB mapped to left end of OLED bar (default -102)
-- --oled-max-db FLOAT      max dB mapped to right end of OLED bar (default 6)
+- --oled-min-db FLOAT      min dB mapped to left end of OLED bar (default -72)
+- --oled-max-db FLOAT      max dB mapped to right end of OLED bar (default 12)
 - --tft                   enable TFT displays (ST7735)
 - --tft-mono              enable mono TFT mode (single display labeled 'LR' using averaged L/R values)
 - --tft-spi-port0 N       SPI port for TFT device0 (default: 0)
@@ -237,6 +237,17 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
 - --dummy                  add dummy display (no-op)
 - --host HOST              CamillaDSP host (default: localhost)
 - --port PORT              CamillaDSP port (default: 1234)
+
+TFT example (dual displays):
+```bash
+.venv/bin/python main.py --tft --tft-spi-port0 0 --tft-cs0 0 --tft-dc0 GPIO25 --tft-rst GPIO16 \
+  --tft-spi-port1 0 --tft-cs1 1 --tft-dc1 GPIO24 --interval-ms 100
+```
+
+TFT mono example (single display labeled LR):
+```bash
+.venv/bin/python main.py --tft --tft-mono --tft-spi-port0 0 --tft-cs0 0 --tft-dc0 GPIO25 --tft-rst GPIO16
+```
 
 ### Example systemd service
 
@@ -288,6 +299,9 @@ sudo journalctl -u camillavumeter -f
   - ledbar_display.py — rpi_ws281x LED bar implementation
   - console_pixelstrip.py — ConsolePixelStrip (debug PixelStrip replacement)
   - oled_display.py — SH1106 OLED pair driver (needle + bar)
+  - oled_renderer.py — renderer for OLED drawing (needle, dB/percentage scales, peak fill)
+  - tft_display.py — ST7735 TFT driver (two devices or mono)
+  - tft_renderer.py — renderer for TFT drawing (analog meter, radial scale, colored peak)
   - dummy_display.py — no-op display
 
 ## License
