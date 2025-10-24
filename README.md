@@ -1,10 +1,13 @@
 # Camilla DSP VU Meter
 
+<img width="1252" height="616" alt="image" src="https://github.com/user-attachments/assets/66b410ca-7e8c-4c11-ad1f-d38e32669030" />
+
 Small utility that reads level/peak information from CamillaDSP and displays a VU meter using:
 - a pseudo-graphical console display (two channels),
 - an `rpi_ws281x` LED strip (mono average of channels), required root,
-- - alternatively, a color-LED simulation running in terminal
+- - alternatively, a color-LED simulation running in a terminal
 - an OLED pair (SH1106) driven via SPI (one display per channel)
+- a pair (or single) TFT display (ST7735) driven via SPI
 - or a dummy no-op display.
 
 - [Camilla DSP VU Meter](#camilla-dsp-vu-meter)
@@ -13,6 +16,8 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
   - [Quick install (recommended inside project directory)](#quick-install-recommended-inside-project-directory)
   - [OLED (SH1106) display details](#oled-sh1106-display-details)
     - [OLED mono mode (single OLED)](#oled-mono-mode-single-oled)
+  - [TFT (ST7735) display details](#tft-st7735-display-details)
+    - [TFT mono mode (single TFT)](#tft-mono-mode-single-tft)
   - [Running](#running)
     - [Available CLI options (examples; actual parser in `main.py`):](#available-cli-options-examples-actual-parser-in-mainpy)
     - [Example systemd service](#example-systemd-service)
@@ -22,11 +27,12 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
 
 ## Features
 
-- Multiple displays can be active simultaneously (console + LED strip + OLED).
+- Multiple displays can be active simultaneously (console + LED strip + OLED + TFT).
 - LED coloring modes: whole-bar (color by dB) or end-colors (start green, last LEDs yellow/red).
 - Fractional brightness for the last lit LED so level transitions look smooth.
 - Peak marker shown on both console and LED strip (LED peak shown only if above configured min dB).
 - OLED pair shows a large channel indicator and a needle meter plus a horizontal level bar with ticks and peak fill.
+- TFT support: analog-style meter renderer with a fixed-length needle, radial dB/percentage scale, and a colored peak fill per channel (mono mode supported).
 - Console debug PixelStrip implementation (ConsolePixelStrip) for debugging without hardware.
 
 ## Requirements
@@ -35,6 +41,7 @@ Small utility that reads level/peak information from CamillaDSP and displays a V
 - Linux (Raspberry Pi recommended for `rpi_ws281x`)
 - Optional system package(s) for `rpi_ws281x` (require root to access PWM/GPIO)
 - Repository requirements (pip): see `requirements.txt` (includes `luma.oled`, `Pillow`, `spidev`)
+- For TFT support: `st7735` Python driver (and `Pillow`) — install the appropriate package for your board.
 
 ## Quick install (recommended inside project directory)
 
@@ -83,6 +90,7 @@ This project supports driving two separate SH1106 SPI OLED devices (one device p
     - angle_span_deg (deg)
     - spi ports/devices and gpio DC/RST pins (gpio_rst is a single shared RST)
   - The display requires `luma.oled` and `Pillow` installed; the code will raise an error if luma is missing.
+  - On application shutdown the OLED(s) are cleared to avoid leaving residual images on the display.
 
 ### OLED mono mode (single OLED)
 
@@ -97,7 +105,56 @@ A mono mode is available when you want a single OLED to show the overall (mono) 
 - CLI:
   - Enable with `--oled --oled-mono`
   - Use the same OLED-related flags as the pair mode; only the device0 values are used for the single display:
-`--oled-spi-port0, --oled-spi-device0, --oled-dc0, --oled-rst, --oled-needle-length, --oled-min-db, --oled-max-db`
+    `--oled-spi-port0, --oled-spi-device0, --oled-dc0, --oled-rst, --oled-needle-length, --oled-min-db, --oled-max-db`
+
+## TFT (ST7735) display details
+
+Basic ST7735 TFT support has been added to allow simple text readouts per channel. This is a lightweight foundation intended to be replaced by a richer renderer later (e.g. from Peppy).
+
+- Initialization example used in this project:
+  ```python
+  import st7735
+
+  disp0 = st7735.ST7735(
+      port = 0,
+      cs   = 0,
+      dc   = "GPIO25",
+      rst  = "GPIO16",
+      backlight = "GPIO18",
+      rotation = 0,
+      width = 320,
+      height = 240,
+      spi_speed_hz = 40*1000000,
+      offset_left = 0,
+      offset_top = 0,
+  )
+
+  disp1 = st7735.ST7735(
+      port = 0,
+      cs   = 1,
+      dc   = "GPIO24",
+      rotation = 0,
+      width = 320,
+      height = 240,
+      spi_speed_hz = 40*1000000,
+      offset_left = 0,
+      offset_top = 0,
+  )
+  ```
+
+- Implementation notes:
+  - The current implementation initializes two ST7735 devices (one per channel) and uses a renderer class to draw an analog-style meter: a radial scale with dB and percentage ticks, a fixed-length needle pivoting from the bottom region, a colored LED-style arc indicating peak, and a large channel label.
+  - All TFT pin/parameter options are exposed via CLI/constructor (SPI port, CS, DC, RST, backlight, rotation, width, height, SPI speed, offsets). The renderer is internal and selected by default; no CLI flag is needed to choose it.
+  - Many ST7735 drivers expose a display(image) or show(image) method; the code attempts both when drawing the PIL image.
+  - The TFT driver used by the project expects the `st7735` Python package and `Pillow` installed.
+  - Displays are cleared on shutdown to avoid leaving static image.
+
+### TFT mono mode (single TFT)
+
+- Behavior:
+  - When `--tft --tft-mono` is used, a single TFT (device0) is used and labelled "LR".
+  - RMS and peak values are the arithmetic mean of left and right channels and are displayed on the single screen.
+  - Only device0 parameters are required; device1 parameters are ignored in mono mode.
 
 ## Running
 
@@ -108,12 +165,21 @@ A mono mode is available when you want a single OLED to show the overall (mono) 
 
   <img width="944" height="83" alt="image" src="https://github.com/user-attachments/assets/5c429980-0420-4b79-b318-d66b9d8efb40" />
 
+
+- TFT Hat (over SPI):
+  ```bash
+  sudo .venv/bin/python main.py --tft --interval-ms 100
+  ```
+
+  <img width="1328" height="675" alt="image" src="https://github.com/user-attachments/assets/1671d49f-3634-4e1f-93cf-327e557aaa8d" />
+
+
 - OLED Hat (over SPI):
   ```bash
   sudo .venv/bin/python main.py --oled --interval-ms 100
   ```
 
-  <img width="568" height="338" alt="image" src="https://github.com/user-attachments/assets/8c4b0a3d-6599-4f56-96a8-1d1e43914d36" />
+  <img width="1290" height="712" alt="image" src="https://github.com/user-attachments/assets/121504a8-163e-4632-a787-17fc9713d9bf" />
 
 
 - LED bar (hardware) on GPIO 18 with 40 LEDs:
@@ -147,9 +213,10 @@ A mono mode is available when you want a single OLED to show the overall (mono) 
 - --led-count N            number of LEDs on the strip (default 40)
 - --led-console-debug      use ConsolePixelStrip (console visualization) instead of real PixelStrip
 - --led-end-colors         enable end-colors mode (start green; last LEDs yellow/red)
-- --led-min-db FLOAT       min dB mapped to first LED (default -120)
-- --led-max-db FLOAT       max dB mapped to last LED (default 12)
+- --led-min-db FLOAT       min dB mapped to first LED (default -102)
+- --led-max-db FLOAT       max dB mapped to last LED (default 6)
 - --oled                   enable OLED pair display
+- --oled-mono              enable mono OLED mode (single display labeled 'LR' using averaged L/R values)
 - --oled-spi-port0 N       SPI port for device0 (example)
 - --oled-spi-device0 N     SPI device number for device0 (example)
 - --oled-dc0 N             DC GPIO for device0
@@ -158,11 +225,40 @@ A mono mode is available when you want a single OLED to show the overall (mono) 
 - --oled-dc1 N             DC GPIO for device1
 - --oled-rst N             shared RST GPIO (single pin used for the first device)
 - --oled-needle-length N   needle length in pixels
-- --oled-min-db FLOAT      min dB mapped to left end of OLED bar (default -102)
-- --oled-max-db FLOAT      max dB mapped to right end of OLED bar (default 6)
+- --oled-min-db FLOAT      min dB mapped to left end of OLED bar (default -72)
+- --oled-max-db FLOAT      max dB mapped to right end of OLED bar (default 12)
+- --tft                   enable TFT displays (ST7735)
+- --tft-mono              enable mono TFT mode (single display labeled 'LR' using averaged L/R values)
+- --tft-spi-port0 N       SPI port for TFT device0 (default: 0)
+- --tft-cs0 N             chip-select for TFT device0 (default: 0)
+- --tft-dc0 PIN           DC pin for TFT device0 (default: GPIO25)
+- --tft-rst PIN           shared RST pin for TFT devices (default: GPIO16)
+- --tft-backlight0 PIN    backlight pin for TFT device0 (default: GPIO18)
+- --tft-rotation0 N       rotation for TFT device0 (default: 0)
+- --tft-spi-port1 N       SPI port for TFT device1 (default: 0)
+- --tft-cs1 N             chip-select for TFT device1 (default: 1)
+- --tft-dc1 PIN           DC pin for TFT device1 (default: GPIO24)
+- --tft-backlight1 PIN    backlight pin for TFT device1 (optional)
+- --tft-rotation1 N       rotation for TFT device1 (default: 0)
+- --tft-width N           TFT width in pixels (default: 320)
+- --tft-height N          TFT height in pixels (default: 240)
+- --tft-spi-speed-hz N    SPI speed for TFT in Hz (default: 40000000)
+- --tft-offset-left N     left offset in pixels (default: 0)
+- --tft-offset-top N      top offset in pixels (default: 0)
 - --dummy                  add dummy display (no-op)
 - --host HOST              CamillaDSP host (default: localhost)
 - --port PORT              CamillaDSP port (default: 1234)
+
+TFT example (dual displays):
+```bash
+.venv/bin/python main.py --tft --tft-spi-port0 0 --tft-cs0 0 --tft-dc0 GPIO25 --tft-rst GPIO16 \
+  --tft-spi-port1 0 --tft-cs1 1 --tft-dc1 GPIO24 --interval-ms 100
+```
+
+TFT mono example (single display labeled LR):
+```bash
+.venv/bin/python main.py --tft --tft-mono --tft-spi-port0 0 --tft-cs0 0 --tft-dc0 GPIO25 --tft-rst GPIO16
+```
 
 ### Example systemd service
 
@@ -214,7 +310,21 @@ sudo journalctl -u camillavumeter -f
   - ledbar_display.py — rpi_ws281x LED bar implementation
   - console_pixelstrip.py — ConsolePixelStrip (debug PixelStrip replacement)
   - oled_display.py — SH1106 OLED pair driver (needle + bar)
+  - oled_renderer.py — renderer for OLED drawing (needle, dB/percentage scales, peak fill)
+  - tft_display.py — ST7735 TFT driver (two devices or mono)
+  - tft_renderer.py — renderer for TFT drawing (analog meter, radial scale, colored peak)
   - dummy_display.py — no-op display
+
+## To Do
+
+I'd like to port a much better-looking implementation I did a long time ago for the [loud-esp project](https://github.com/sonocotta/loud-esp/tree/main/firmware/test-visual/esp32-demo-vu-meters). I tried to do it quickly and easily and failed.
+
+<img width="1138" height="821" alt="image" src="https://github.com/user-attachments/assets/b697d791-ca79-4aea-9c40-72080825bdae" />
+
+Another alternative is to use the Raspberry Pi native [PeppyMeter](https://github.com/project-owner/PeppyMeter/) project, also much better looking, but a little harder to spin up
+
+<img width="691" height="403" alt="image" src="https://github.com/user-attachments/assets/9e9238d0-95a5-4149-95fd-f81866e607eb" />
+
 
 ## License
 

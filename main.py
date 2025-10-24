@@ -24,20 +24,36 @@ class CamillaVuMeter:
         self.client.connect()
         print(f"Connected to CamillaDSP at {self.host}:{self.port}")
 
-        while True:
+        try:
+            while True:
+                try:
+                    levels = self.client.levels
+                    if levels:
+                        for disp in self.displays:
+                            try:
+                                disp.update(levels)
+                            except Exception as e:
+                                # do not stop other displays on one failure
+                                print(f"Display error ({disp.__class__.__name__}): {e}")
+                    await asyncio.sleep(self.update_interval)
+                except Exception as e:
+                    print(f"Error fetching VU levels: {e}")
+                    await asyncio.sleep(1)
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            pass
+        finally:
+            # clear displays on exit if they support clear()
+            for disp in self.displays:
+                try:
+                    if hasattr(disp, "clear") and callable(getattr(disp, "clear")):
+                        disp.clear()
+                except Exception:
+                    pass
             try:
-                levels = self.client.levels
-                if levels:
-                    for disp in self.displays:
-                        try:
-                            disp.update(levels)
-                        except Exception as e:
-                            # do not stop other displays on one failure
-                            print(f"Display error ({disp.__class__.__name__}): {e}")
-                await asyncio.sleep(self.update_interval)
-            except Exception as e:
-                print(f"Error fetching VU levels: {e}")
-                await asyncio.sleep(1)
+                if hasattr(self.client, "close"):
+                    self.client.close()
+            except Exception:
+                pass
 
 
 async def main(args):
@@ -49,8 +65,8 @@ async def main(args):
 
     # LED bar display
     if args.ledbar:
-        displays.append(RpiWs281xDisplay(pin=args.led_pin, 
-                                         num_leds=args.led_count, 
+        displays.append(RpiWs281xDisplay(pin=args.led_pin,
+                                         num_leds=args.led_count,
                                          console_strip=args.led_console_debug,
                                          end_colors=args.led_end_colors,
                                          min_db=args.led_min_db,
@@ -75,6 +91,32 @@ async def main(args):
             ))
         except Exception as e:
             print(f"OLED display not available or failed to initialize: {e}")
+
+    # TFT display
+    if args.tft:
+        try:
+            from display.tft_display import TFTDisplay
+            displays.append(TFTDisplay(
+                spi_port0=args.tft_spi_port0,
+                cs0=args.tft_cs0,
+                dc0=args.tft_dc0,
+                rst=args.tft_rst,
+                backlight0=args.tft_backlight0,
+                rotation0=args.tft_rotation0,
+                spi_port1=args.tft_spi_port1,
+                cs1=args.tft_cs1,
+                dc1=args.tft_dc1,
+                backlight1=args.tft_backlight1,
+                rotation1=args.tft_rotation1,
+                width=args.tft_width,
+                height=args.tft_height,
+                spi_speed_hz=args.tft_spi_speed_hz,
+                offset_left=args.tft_offset_left,
+                offset_top=args.tft_offset_top,
+                mono=args.tft_mono,
+            ))
+        except Exception as e:
+            print(f"TFT display not available or failed to initialize: {e}")
 
     # Dummy display
     if args.dummy:
@@ -115,7 +157,7 @@ if __name__ == "__main__":
                         help="Maximum dB for LED bar display (default: 6.0)")
 
     parser.add_argument("--oled", action="store_true",
-                        help="Enable OLED display") 
+                        help="Enable OLED display")
     parser.add_argument("--oled-mono", action="store_true",
                         help="Enable mono OLED mode (single display labeled 'LR' using averaged L/R values)")
     parser.add_argument("--oled-spi-port0", type=int, default=0,
@@ -134,10 +176,49 @@ if __name__ == "__main__":
                         help="Shared RST GPIO for both OLEDs (passed for first device only; default: 16)")
     parser.add_argument("--oled-needle-length", type=int, default=80,
                         help="Needle length in pixels for OLED meter (default: 80)")
-    parser.add_argument("--oled-min-db", type=float, default=-96.0,
-                        help="Minimum dB mapped to left end of OLED bar (default: -96.0)")
+    parser.add_argument("--oled-min-db", type=float, default=-72.0,
+                        help="Minimum dB mapped to left end of OLED bar (default: -72.0)")
     parser.add_argument("--oled-max-db", type=float, default=12.0,
                         help="Maximum dB mapped to right end of OLED bar (default: 12.0)")
+
+    parser.add_argument("--tft", action="store_true",
+                        help="Enable TFT displays (ST7735)")
+    parser.add_argument("--tft-mono", action="store_true",
+                        help="Enable mono TFT mode (single display labeled 'LR' using averaged L/R values)")
+    parser.add_argument("--tft-spi-port0", type=int, default=0,
+                        help="SPI port for TFT device0 (default: 0)")
+    parser.add_argument("--tft-cs0", type=int, default=0,
+                        help="Chip-select for TFT device0 (default: 0)")
+    parser.add_argument("--tft-dc0", default="GPIO25",
+                        help="DC pin for TFT device0 (default: GPIO25)")
+    parser.add_argument("--tft-rst", default="GPIO16",
+                        help="RST pin for TFT devices (shared; default: GPIO16)")
+    parser.add_argument("--tft-backlight0", default="GPIO18",
+                        help="Backlight pin for TFT device0 (default: GPIO18)")
+    parser.add_argument("--tft-rotation0", type=int, default=0,
+                        help="Rotation for TFT device0 (default: 0)")
+
+    parser.add_argument("--tft-spi-port1", type=int, default=0,
+                        help="SPI port for TFT device1 (default: 0)")
+    parser.add_argument("--tft-cs1", type=int, default=1,
+                        help="Chip-select for TFT device1 (default: 1)")
+    parser.add_argument("--tft-dc1", default="GPIO24",
+                        help="DC pin for TFT device1 (default: GPIO24)")
+    parser.add_argument("--tft-backlight1", default=None,
+                        help="Backlight pin for TFT device1 (optional)")
+    parser.add_argument("--tft-rotation1", type=int, default=0,
+                        help="Rotation for TFT device1 (default: 0)")
+
+    parser.add_argument("--tft-width", type=int, default=320,
+                        help="TFT width in pixels (default: 320)")
+    parser.add_argument("--tft-height", type=int, default=240,
+                        help="TFT height in pixels (default: 240)")
+    parser.add_argument("--tft-spi-speed-hz", type=int, default=40_000_000,
+                        help="SPI speed for TFT in Hz (default: 40_000_000)")
+    parser.add_argument("--tft-offset-left", type=int, default=0,
+                        help="TFT offset left (default: 0)")
+    parser.add_argument("--tft-offset-top", type=int, default=0,
+                        help="TFT offset top (default: 0)")
 
     parser.add_argument("--console", action="store_true",
                         help="Enable console pseudo-graphical display")
