@@ -1,9 +1,11 @@
 # Camilla DSP VU Meter
 
+<img width="1252" height="616" alt="image" src="https://github.com/user-attachments/assets/66b410ca-7e8c-4c11-ad1f-d38e32669030" />
+
 Small utility that reads level/peak information from CamillaDSP and displays a VU meter using:
 - a pseudo-graphical console display (two channels),
 - an `rpi_ws281x` LED strip (mono average of channels), required root,
-- - alternatively, a color-LED simulation running in terminal
+- - alternatively, a color-LED simulation running in a terminal
 - an OLED pair (SH1106) driven via SPI (one display per channel)
 - a pair (or single) TFT display (ST7735) driven via SPI
 - or a dummy no-op display.
@@ -177,7 +179,7 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
   sudo .venv/bin/python main.py --oled --interval-ms 100
   ```
 
-  <img width="568" height="338" alt="image" src="https://github.com/user-attachments/assets/8c4b0a3d-6599-4f56-96a8-1d1e43914d36" />
+  <img width="1290" height="712" alt="image" src="https://github.com/user-attachments/assets/121504a8-163e-4632-a787-17fc9713d9bf" />
 
 
 - LED bar (hardware) on GPIO 18 with 40 LEDs:
