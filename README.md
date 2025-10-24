@@ -163,6 +163,15 @@ Basic ST7735 TFT support has been added to allow simple text readouts per channe
 
   <img width="944" height="83" alt="image" src="https://github.com/user-attachments/assets/5c429980-0420-4b79-b318-d66b9d8efb40" />
 
+
+- TFT Hat (over SPI):
+  ```bash
+  sudo .venv/bin/python main.py --tft --interval-ms 100
+  ```
+
+  <img width="1328" height="675" alt="image" src="https://github.com/user-attachments/assets/1671d49f-3634-4e1f-93cf-327e557aaa8d" />
+
+
 - OLED Hat (over SPI):
   ```bash
   sudo .venv/bin/python main.py --oled --interval-ms 100
@@ -303,6 +312,17 @@ sudo journalctl -u camillavumeter -f
   - tft_display.py — ST7735 TFT driver (two devices or mono)
   - tft_renderer.py — renderer for TFT drawing (analog meter, radial scale, colored peak)
   - dummy_display.py — no-op display
+
+## To Do
+
+I'd like to port a much better-looking implementation I did a long time ago for the [loud-esp project](https://github.com/sonocotta/loud-esp/tree/main/firmware/test-visual/esp32-demo-vu-meters). I tried to do it quickly and easily and failed.
+
+<img width="1138" height="821" alt="image" src="https://github.com/user-attachments/assets/b697d791-ca79-4aea-9c40-72080825bdae" />
+
+Another alternative is to use the Raspberry Pi native [PeppyMeter](https://github.com/project-owner/PeppyMeter/) project, also much better looking, but a little harder to spin up
+
+<img width="691" height="403" alt="image" src="https://github.com/user-attachments/assets/9e9238d0-95a5-4149-95fd-f81866e607eb" />
+
 
 ## License
 
