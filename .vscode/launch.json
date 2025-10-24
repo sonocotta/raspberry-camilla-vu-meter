@@ -9,7 +9,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--interval-ms", "100",
-                "--console", "--console-bar-length", "60",
+                // "--console", "--console-bar-length", "60",
                 "--tft"
             ]
         },

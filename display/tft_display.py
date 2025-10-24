@@ -108,7 +108,7 @@ class TFTDisplay:
                 if backlight1 is not None:
                     params["backlight"] = backlight1
                 self.device1 = st7735.ST7735(**params)
-        except Exception as e:
+        except Exception:
             # initialization failed -> print and fall back to console prints
             traceback.print_exc()
             self.device0 = None
@@ -118,11 +118,12 @@ class TFTDisplay:
         try:
             if renderer_class is None:
                 # default to internal dummy renderer if available
-                from .tft_dummy_renderer import TftDummyRenderer as _DefaultRenderer  # type: ignore
+                from .tft_renderer import TftRenderer as _DefaultRenderer  # type: ignore
                 renderer_class = _DefaultRenderer
             # renderer gets devices and layout parameters
             self._renderer = renderer_class(self.device0, self.device1, width=self.width, height=self.height, mono=self.mono)
         except Exception:
+            traceback.print_exc()
             self._renderer = None
 
     def _prepare_levels(self, levels) -> Optional[Dict[str, List[float]]]:
@@ -194,18 +195,8 @@ class TFTDisplay:
         while len(peak) < 2:
             peak.append(-120.0)
 
-        if self.mono:
-            avg_rms = (float(rms[0]) + float(rms[1])) / 2.0
-            avg_peak = (float(peak[0]) + float(peak[1])) / 2.0
-            # delegate to renderer when available
-            if self._renderer is not None and hasattr(self._renderer, "draw"):
-                self._renderer.draw(avg_rms, avg_peak, avg_rms, avg_peak)
-            else:
-                print(f"LR RMS:{avg_rms:.1f} dB  PK:{avg_peak:.1f} dB")
+        if self._renderer is not None and hasattr(self._renderer, "draw"):
+            self._renderer.draw(float(rms[0]), float(peak[0]), float(rms[1]), float(peak[1]))
         else:
-            # channel 0 -> device0 labeled "L", channel 1 -> device1 labeled "R"
-            if self._renderer is not None and hasattr(self._renderer, "draw"):
-                self._renderer.draw(float(rms[0]), float(peak[0]), float(rms[1]), float(peak[1]))
-            else:
-                print(f"L RMS:{float(rms[0]):.1f} dB  PK:{float(peak[0]):.1f} dB")
-                print(f"R RMS:{float(rms[1]):.1f} dB  PK:{float(peak[1]):.1f} dB")
+            print(f"L RMS:{float(rms[0]):.1f} dB  PK:{float(peak[0]):.1f} dB")
+            print(f"R RMS:{float(rms[1]):.1f} dB  PK:{float(peak[1]):.1f} dB")
